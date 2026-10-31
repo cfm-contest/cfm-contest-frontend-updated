@@ -1,0 +1,220 @@
+/* ───── Rank ramkalari: animatsiyalar ───── */
+
+.rank-avatar {
+  isolation: isolate;
+  filter: drop-shadow(0 4px 8px var(--rank-glow));
+}
+.rank-avatar.rf-interactive {
+  cursor: pointer;
+  transition: filter 0.25s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.rank-avatar.rf-interactive:hover {
+  filter: drop-shadow(0 6px 16px var(--rank-glow)) brightness(1.07);
+}
+.rank-avatar.rf-interactive:focus-visible {
+  outline: 2px solid var(--rank-secondary);
+  outline-offset: 4px;
+  border-radius: 9999px;
+}
+
+/* aylanish (yaltirash, orbitalar, runalar) */
+.rf-spin {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: rf-rotate var(--rf-dur, 8s) linear infinite;
+}
+.rf-rev { animation-direction: reverse; }
+@keyframes rf-rotate { to { transform: rotate(360deg); } }
+
+/* nur nafasi */
+.rf-pulse { animation: rf-pulse 2.8s ease-in-out infinite; }
+@keyframes rf-pulse {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.8; }
+}
+
+/* miltillovchi yulduzcha */
+.rf-twinkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: rf-twinkle 2.4s ease-in-out infinite;
+}
+@keyframes rf-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.2) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1.1) rotate(45deg); }
+}
+
+/* gemlar yaltirashi */
+.rf-gem { animation: rf-gem 2.4s ease-in-out infinite; }
+@keyframes rf-gem {
+  0%, 100% { opacity: 0.8; filter: brightness(1); }
+  50% { opacity: 1; filter: brightness(1.6); }
+}
+
+/* diamond uchlari nafasi */
+.rf-breathe {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: rf-breathe 3s ease-in-out infinite;
+}
+@keyframes rf-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.035); }
+}
+
+/* alanga */
+.rf-flame {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: rf-flicker 1.1s ease-in-out infinite;
+}
+@keyframes rf-flicker {
+  0%, 100% { transform: scale(1, 1) skewX(0deg); }
+  25% { transform: scale(0.9, 1.18) skewX(5deg); }
+  50% { transform: scale(1.1, 0.88) skewX(-4deg); }
+  75% { transform: scale(0.95, 1.1) skewX(3deg); }
+}
+
+.rf-static *, .rf-static { animation: none !important; }
+
+/* ───── Bosilganda: zarba to'lqini + zarralar ───── */
+
+.rf-shock {
+  position: absolute;
+  inset: 14%;
+  border-radius: 9999px;
+  border: 2px solid var(--rank-secondary);
+  box-shadow: 0 0 14px var(--rank-primary), inset 0 0 10px var(--rank-glow);
+  opacity: 0;
+  animation: rf-shock 0.9s ease-out forwards;
+}
+@keyframes rf-shock {
+  0% { opacity: 0.95; transform: scale(0.6); }
+  100% { opacity: 0; transform: scale(2); }
+}
+
+.rf-wave { position: absolute; width: 0; height: 0; }
+
+.rf-p {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  width: var(--s);
+  height: var(--s);
+  margin: calc(var(--s) / -2) 0 0 calc(var(--s) / -2);
+  border-radius: 9999px;
+  background: var(--c);
+  box-shadow: 0 0 6px var(--c);
+  opacity: 0;
+  animation: rf-fly var(--dur) cubic-bezier(0.15, 0.7, 0.3, 1) var(--delay) forwards;
+}
+.rf-p-spark {
+  width: var(--s);
+  height: 2px;
+  margin: -1px 0 0 0;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--c));
+  transform-origin: 0 50%;
+}
+.rf-p-star {
+  border-radius: 0;
+  background: #fff;
+  box-shadow: none;
+  filter: drop-shadow(0 0 3px var(--c));
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+}
+.rf-p-ember {
+  background: radial-gradient(circle, #fff 0%, var(--c) 45%, transparent 75%);
+  animation-name: rf-rise;
+  animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1);
+}
+
+@keyframes rf-fly {
+  0% { opacity: 1; transform: rotate(var(--ang)) translateX(0) scale(1); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(var(--ang)) translateX(var(--dist)) scale(0.2); }
+}
+@keyframes rf-rise {
+  0% { opacity: 1; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rf-spin, .rf-pulse, .rf-twinkle, .rf-gem, .rf-breathe, .rf-flame,
+  .rf-glow, .rf-art-breathe, .rf-sweep, .rf-amb-rise, .rf-amb-float {
+    animation: none !important;
+  }
+  .rf-twinkle { opacity: 0.8; }
+  .rf-bar::after { animation: none !important; }
+}
+
+/* ───── XP progress: yaltiroq chiziq ───── */
+.rf-bar { position: relative; overflow: hidden; }
+.rf-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.55) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: rf-shimmer 2.4s ease-in-out infinite;
+}
+@keyframes rf-shimmer { to { transform: translateX(100%); } }
+
+/* ───── Tayyor SVG ramkalar uchun effektlar ───── */
+
+/* ramka orqasidagi nur */
+.rf-glow {
+  inset: -6%;
+  border-radius: 9999px;
+  background: radial-gradient(circle, var(--rank-glow) 0%, transparent 68%);
+  animation: rf-glow 3.2s ease-in-out infinite;
+}
+@keyframes rf-glow {
+  0%, 100% { opacity: 0.55; transform: scale(0.96); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+/* rasmning o'zi: yengil nafas */
+.rf-art-breathe { animation: rf-art-breathe 3.4s ease-in-out infinite; }
+@keyframes rf-art-breathe {
+  0%, 100% { filter: brightness(1) saturate(1); }
+  50% { filter: brightness(1.12) saturate(1.12); }
+}
+
+/* yaltirash: SVG rasmning shakli bo'yicha kesilgan (mask) */
+.rf-sweep {
+  -webkit-mask: var(--rf-mask) center / 100% 100% no-repeat;
+  mask: var(--rf-mask) center / 100% 100% no-repeat;
+  background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, 0.65) 50%, transparent 58%);
+  background-size: 250% 100%;
+  background-position: 100% 0;
+  animation: rf-sweep var(--rf-dur, 4s) ease-in-out infinite;
+}
+@keyframes rf-sweep {
+  0% { background-position: 100% 0; }
+  45%, 100% { background-position: 0% 0; }
+}
+
+/* cho'g' ko'tarilishi (grandmaster, immortal) */
+.rf-amb-rise {
+  opacity: 0;
+  animation: rf-amb-rise 2s ease-out infinite;
+}
+@keyframes rf-amb-rise {
+  0% { opacity: 0; transform: translate(0, 0); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)); }
+}
+
+/* suzuvchi chang (gold dan master gacha) */
+.rf-amb-float {
+  opacity: 0;
+  animation: rf-amb-float 4s ease-in-out infinite;
+}
+@keyframes rf-amb-float {
+  0%, 100% { opacity: 0; transform: translate(0, 0); }
+  50% { opacity: 0.95; transform: translate(1.6px, -2.4px); }
+}
