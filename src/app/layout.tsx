@@ -55,6 +55,7 @@ export const metadata: Metadata = {
   description: DEFAULT_DESCRIPTION,
 
   applicationName: SITE_NAME,
+  manifest: "/site.webmanifest",
 
   alternates: {
     canonical: "/",
