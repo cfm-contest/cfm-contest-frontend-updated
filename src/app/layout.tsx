@@ -46,7 +46,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-
+manifest: "/site.webmanifest",
   title: {
     default: SITE_NAME,
     template: `%s | ${SITE_NAME}`,
@@ -99,6 +99,11 @@ export const metadata: Metadata = {
       url: "/favicon.ico",
       sizes: "48x48",
       type: "image/x-icon",
+    },
+    {
+      url: "/favicon.png",
+      sizes: "any",
+      type: "image/png",
     },
     {
       url: "/favicon-32x32.png",
