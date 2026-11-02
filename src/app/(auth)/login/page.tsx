@@ -28,7 +28,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [shake, setShake] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -48,13 +47,6 @@ export default function LoginPage() {
     }
   }, [isLoading, isAuthenticated, searchParams, router]);
 
-  // Mount animatsiyasi
-  useEffect(() => {
-    setMounted(true);
-    const t = setTimeout(() => inputsRef.current[0]?.focus(), 100);
-    return () => clearTimeout(t);
-  }, []);
-
   const setDigitAt = useCallback((index: number, value: string) => {
     setDigits((prev) => {
       const next = [...prev];
@@ -64,11 +56,7 @@ export default function LoginPage() {
   }, []);
 
   const focusInput = useCallback((index: number) => {
-    const el = inputsRef.current[index];
-    if (el) {
-      el.focus();
-      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
+    inputsRef.current[index]?.focus({ preventScroll: true });
   }, []);
 
   const triggerError = useCallback((message: string) => {
@@ -83,9 +71,21 @@ export default function LoginPage() {
 
   const handleChange = useCallback(
     (index: number, raw: string) => {
-      const val = raw.replace(/\D/g, "").slice(-1);
-      if (!val) return;
-      setDigitAt(index, val);
+      const value = raw.replace(/\D/g, "").slice(0, OTP_LENGTH);
+      if (!value) return;
+
+      if (value.length > 1) {
+        const nextDigits = Array.from(
+          { length: OTP_LENGTH },
+          (_, digitIndex) => value[digitIndex] ?? ""
+        );
+        setDigits(nextDigits);
+        setError("");
+        focusInput(Math.min(value.length, OTP_LENGTH - 1));
+        return;
+      }
+
+      setDigitAt(index, value);
       setError("");
       if (index < OTP_LENGTH - 1) focusInput(index + 1);
     },
@@ -127,10 +127,10 @@ export default function LoginPage() {
       setError("");
       setTimeout(() => {
         const idx = Math.min(text.length, OTP_LENGTH - 1);
-        inputsRef.current[idx]?.focus();
+        focusInput(idx);
       }, 10);
     },
-    []
+    [focusInput]
   );
 
   const handleSubmit = useCallback(
@@ -194,15 +194,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center overflow-hidden bg-slate-50 p-4 dark:bg-black">
-      <div
-        className={`flex w-full max-w-sm flex-col items-center rounded-3xl border border-slate-200/80 bg-white p-7 shadow-xl shadow-slate-200/40 transition-all duration-500 dark:border-white/10 dark:bg-zinc-950 dark:shadow-none sm:p-9 ${
-          mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-        }`}
-      >
+    <div className="login-page flex min-h-dvh w-full items-center justify-center bg-slate-50 px-3 py-5 dark:bg-black sm:p-4">
+      <div className="flex w-full max-w-sm flex-col items-center rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xl shadow-slate-200/40 dark:border-white/10 dark:bg-zinc-950 dark:shadow-none sm:p-9">
         {/* Logo */}
-        <div className="mb-4">
-           <div className="relative h-16 w-16 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50 dark:border-white/10 dark:bg-zinc-900">
+        <div className="mb-3 sm:mb-4">
+           <div className="relative size-14 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50 dark:border-white/10 dark:bg-zinc-900 sm:size-16">
               <Image
                 src="/cfm_logo.webp"
                 alt="CfM Contest"
@@ -218,7 +214,7 @@ export default function LoginPage() {
           Kodni kiriting
         </h1>
 
-        <p className="mb-7 max-w-xs text-center text-sm leading-relaxed text-slate-500 dark:text-zinc-400">
+        <p className="mb-6 max-w-xs text-center text-sm leading-relaxed text-slate-500 dark:text-zinc-400 sm:mb-7">
           <a
             href={`https://t.me/${BOT_USERNAME}`}
             target="_blank"
@@ -234,10 +230,10 @@ export default function LoginPage() {
         {/* OTP */}
         <form
           onSubmit={handleSubmit}
-          className="flex w-full flex-col items-center gap-5"
+          className="flex w-full flex-col items-center gap-4 sm:gap-5"
         >
           <div
-            className={`flex w-full justify-center gap-2.5 sm:gap-3 ${shake ? "animate-shake" : ""}`}
+            className={`grid w-full grid-cols-6 gap-1.5 sm:gap-3 ${shake ? "animate-shake" : ""}`}
             onPaste={handlePaste}
             role="group"
             aria-label="Tasdiqlash kodi"
@@ -251,14 +247,14 @@ export default function LoginPage() {
                 type="text"
                 inputMode="numeric"
                 autoComplete={i === 0 ? "one-time-code" : "off"}
-                maxLength={1}
+                maxLength={i === 0 ? OTP_LENGTH : 1}
                 value={digit}
                 disabled={loading}
                 aria-label={`${i + 1}-raqam`}
                 aria-invalid={!!error}
                 onChange={(e) => handleChange(i, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(i, e)}
-                className={`h-14 w-11 sm:w-12 rounded-2xl border text-center text-xl font-bold outline-none transition-all
+                className={`h-12 w-full min-w-0 rounded-xl border text-center text-xl font-bold outline-none transition-all sm:h-14 sm:rounded-2xl
                   ${
                     digit
                       ? "border-amber-500 bg-amber-50/50 text-slate-950 dark:border-amber-400 dark:bg-amber-400/10 dark:text-white"
@@ -300,16 +296,17 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-xs text-slate-400 dark:text-zinc-500">
+        <p className="mt-5 text-center text-xs text-slate-400 dark:text-zinc-500 sm:mt-6">
           Kod kelmadimi? Botga qayta{" "}
           <span className="font-semibold text-slate-600 dark:text-zinc-300">/start</span> yozing.
         </p>
       </div>
 
       <style jsx global>{`
-        html, body {
-          overflow: hidden;
-          height: 100%;
+        @media (max-height: 620px) {
+          .login-page {
+            align-items: flex-start;
+          }
         }
         @keyframes shake {
           10%, 90% { transform: translateX(-1px); }
