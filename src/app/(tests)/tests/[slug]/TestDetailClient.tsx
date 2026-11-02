@@ -62,21 +62,29 @@ import ResultPanel from "./ResultPanel";
 import LeaderboardPanel from "./LeaderboardPanel";
 import AnalysisPanel from "./AnalysisPanel";
 import PurchaseDialog from "./PurchaseDialog";
+import ReviewPanel from "./ReviewPanel";
 
 /* ------------------------------------------------------------------ */
 /* helpers                                                             */
 /* ------------------------------------------------------------------ */
 
-type TabId = "info" | "result" | "board" | "analysis";
-type DialogId = null | "login" | "enroll" | "start" | "buy";
+type TabId = "info" | "result" | "review" | "board" | "analysis";
 
-const TAB_FROM_QUERY: Record<string, TabId> = { natija: "result", reyting: "board", tahlil: "analysis" };
+const TAB_FROM_QUERY: Record<string, TabId> = {
+  natija: "result",
+  savollar: "review",
+  reyting: "board",
+  tahlil: "analysis",
+};
 const QUERY_FROM_TAB: Record<TabId, string | null> = {
   info: null,
   result: "natija",
+  review: "savollar",
   board: "reyting",
   analysis: "tahlil",
 };
+type DialogId = null | "login" | "enroll" | "start" | "buy";
+
 
 // Loyihangizdagi login sahifasiga moslang
 const loginHref = (slug: string) => `/login?next=${encodeURIComponent(`/tests/${slug}`)}`;
@@ -153,6 +161,8 @@ function actionKind(test: TestDetailData, status: TestStatusValue, enrolled: boo
   return "start";
 }
 
+
+
 /* ------------------------------------------------------------------ */
 /* main                                                                */
 /* ------------------------------------------------------------------ */
@@ -176,13 +186,14 @@ export default function TestDetailClient({ test, initialTab }: { test: TestDetai
 
   const hasSession = test.ss !== null && test.ss !== undefined;
   const tabs = useMemo(() => {
-    const list: { id: TabId; label: string }[] = [{ id: "info", label: "Ma’lumot" }];
-    if (hasSession) list.push({ id: "result", label: "Natijam" });
-    if (status === "finished") list.push({ id: "board", label: "Reyting" });
-    // Tahlil: test tugagan va foydalanuvchi ro‘yxatdan o‘tgan bo‘lsa
-    if (status === "finished" && enrolled) list.push({ id: "analysis", label: "Tahlil" });
-    return list;
-  }, [hasSession, status, enrolled]);
+  const list: { id: TabId; label: string }[] = [{ id: "info", label: "Ma’lumot" }];
+  if (hasSession) list.push({ id: "result", label: "Natijam" });
+  // Savollar: faqat test tugagan va foydalanuvchi qatnashgan bo'lsa
+  if (status === "finished" && hasSession) list.push({ id: "review", label: "Savollar" });
+  if (status === "finished") list.push({ id: "board", label: "Reyting" });
+  if (status === "finished" && enrolled) list.push({ id: "analysis", label: "Tahlil" });
+  return list;
+}, [hasSession, status, enrolled]);
 
   const [tab, setTab] = useState<TabId>(TAB_FROM_QUERY[initialTab ?? ""] ?? "info");
   const activeTab = tabs.some((t) => t.id === tab) ? tab : "info";
@@ -269,10 +280,12 @@ export default function TestDetailClient({ test, initialTab }: { test: TestDetai
           <div role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
             {activeTab === "info" && <InfoPanel test={test} />}
             {activeTab === "result" && hasSession && <ResultPanel slug={test.slug} />}
+            {activeTab === "review" && status === "finished" && hasSession && <ReviewPanel slug={test.slug} />}
             {activeTab === "board" && status === "finished" && (
               <LeaderboardPanel slug={test.slug} title={test.t} start={test.start!} end={test.end!} />
             )}
             {activeTab === "analysis" && status === "finished" && enrolled && <AnalysisPanel slug={test.slug} />}
+
           </div>
         </div>
 
