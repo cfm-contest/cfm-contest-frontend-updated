@@ -21,30 +21,27 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+// --------------------------------------------------
+// TYPES
+// --------------------------------------------------
+
 interface DayInfo {
   date: string;
-  value: number; // faollik balli (yechilgan masalalar)
-  xp: number;
-  solved: number;
-  minutes: number;
-}
-
-interface Summary {
-  total_xp: number;
-  total_solved: number;
-  total_minutes: number;
-  best_xp: number;
-  active_days: number;
-  tracked_days: number;
-  rate: number;
-  current_streak: number;
-  longest_streak: number;
+  q: number;
+  p: number;
+  l: number;
 }
 
 interface HeatmapResponse {
   first_year: number;
-  range: { from: string | null; to: string | null };
-  summary: Summary;
+
+  range: {
+    from: string;
+    to: string;
+  };
+
+  current_streak: number;
+
   days: DayInfo[];
 }
 
@@ -54,65 +51,259 @@ interface HeatmapProps {
   registrationYear?: number;
 }
 
-const MONTHS_SHORT = ["Yan", "Fev", "Mar", "Apr", "May", "Iyun", "Iyul", "Avg", "Sen", "Okt", "Noy", "Dek"];
-const MONTHS_FULL = [
-  "yanvar", "fevral", "mart", "aprel", "may", "iyun",
-  "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr",
+interface HeatmapItem {
+  date: string;
+  value: number;
+}
+
+// --------------------------------------------------
+// CONSTANTS
+// --------------------------------------------------
+
+const MONTHS_SHORT = [
+  "Yan", "Fev", "Mar", "Apr", "May", "Iyun",
+  "Iyul", "Avg", "Sen", "Okt", "Noy", "Dek",
 ];
-// Yakshanbadan boshlanadi (JS getDay() tartibi)
-const WEEKDAYS_SHORT = ["Yak", "Dush", "Sesh", "Chor", "Pay", "Jum", "Shan"];
+
+const MONTHS_FULL = [
+  "yanvar",
+  "fevral",
+  "mart",
+  "aprel",
+  "may",
+  "iyun",
+  "iyul",
+  "avgust",
+  "sentabr",
+  "oktabr",
+  "noyabr",
+  "dekabr",
+];
+
+const WEEKDAYS_SHORT = [
+  "Yak", "Dush", "Sesh", "Chor", "Pay", "Jum", "Shan",
+];
+
 const WEEKDAYS_FULL = [
-  "yakshanba", "dushanba", "seshanba", "chorshanba", "payshanba", "juma", "shanba",
+  "yakshanba",
+  "dushanba",
+  "seshanba",
+  "chorshanba",
+  "payshanba",
+  "juma",
+  "shanba",
 ];
 
 const nf = new Intl.NumberFormat("en-US").format;
 
+// --------------------------------------------------
+// FETCHER
+// --------------------------------------------------
+
 const fetcher = async (url: string): Promise<HeatmapResponse> => {
   const res = await backendRequest(url);
+
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new Error(body?.detail ?? "Heatmap ma'lumotlarini yuklab bo'lmadi.");
+
+    throw new Error(
+      body?.detail ?? "Heatmap ma'lumotlarini yuklab bo'lmadi."
+    );
   }
+
   return res.json();
 };
 
+// --------------------------------------------------
+// DATE HELPERS
+// --------------------------------------------------
+
 function formatDate(iso: string) {
-  const [y, m, d] = iso.split("-").map(Number);
-  const weekday = WEEKDAYS_FULL[new Date(y, m - 1, d).getDay()];
-  return `${d}-${MONTHS_FULL[m - 1]}, ${y} · ${weekday}`;
+  const [year, month, day] = iso.split("-").map(Number);
+
+  const date = new Date(year, month - 1, day);
+  const weekday = WEEKDAYS_FULL[date.getDay()];
+
+  return `${day}-${MONTHS_FULL[month - 1]}, ${year} · ${weekday}`;
 }
 
-function formatMinutes(min: number) {
-  if (min < 60) return `${min} daqiqa`;
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return m ? `${h} soat ${m} daqiqa` : `${h} soat`;
+/**
+ * Vaqt zonasi sababli kunlar noto'g'ri hisoblanmasligi uchun
+ * UTC orqali kun raqamini olamiz.
+ */
+function getDateOrdinal(iso: string) {
+  const [year, month, day] = iso.split("-").map(Number);
+
+  return Math.floor(
+    Date.UTC(year, month - 1, day) / 86_400_000
+  );
 }
 
-/** Kvartillar: bitta juda katta qiymat qolgan kunlarni oqartirib yubormaydi. */
-function buildThresholds(values: number[]): [number, number, number] {
-  const sorted = values.filter((v) => v > 0).sort((a, b) => a - b);
-  if (!sorted.length) return [0, 0, 0];
-  const q = (p: number) => sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))];
-  return [q(0.25), q(0.5), q(0.75)];
+function getDaysBetween(from: string, to: string) {
+  return Math.max(
+    getDateOrdinal(to) - getDateOrdinal(from) + 1,
+    0
+  );
 }
 
-function levelOf(v: number, [t1, t2, t3]: [number, number, number]) {
-  if (v <= 0) return 0;
-  if (v <= t1) return 1;
-  if (v <= t2) return 2;
-  if (v <= t3) return 3;
-  return 4;
+// --------------------------------------------------
+// ACTIVITY SCORE
+// --------------------------------------------------
+
+/**
+ * 3 ta question = 1 ball
+ * 1 ta problem = 1 ball
+ * 1 ta locore = 1 ball
+ */
+function getActivityScore(day: DayInfo) {
+  return Math.floor(day.q / 3) + day.p + day.l;
 }
 
-export default function Heatmap({ telegramId, username, registrationYear }: HeatmapProps) {
+/**
+ * Faollik balliga qarab rang darajasi.
+ *
+ * 0 ball  = 0
+ * 1 ball  = 1
+ * 2-4     = 2
+ * 5-9     = 3
+ * 10+     = 4
+ */
+function getActivityLevel(score: number): number {
+  if (score >= 10) return 4;
+  if (score >= 5) return 3;
+  if (score >= 2) return 2;
+  if (score >= 1) return 1;
+
+  return 0;
+}
+
+// --------------------------------------------------
+// SUMMARY CALCULATOR
+// --------------------------------------------------
+
+function calculateStats(
+  days: DayInfo[],
+  currentStreak: number,
+  isCurrentYear: boolean,
+  range: HeatmapResponse["range"]
+) {
+  let totalScore = 0;
+
+  let totalQuestions = 0;
+  let totalProblems = 0;
+  let totalLocore = 0;
+
+  let bestDayScore = 0;
+  let bestDayDate: string | null = null;
+
+  const sortedDays = [...days].sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
+
+  let longestStreak = 0;
+  let currentRun = 0;
+  let previousOrdinal: number | null = null;
+
+  for (const day of sortedDays) {
+    const score = getActivityScore(day);
+
+    totalScore += score;
+
+    totalQuestions += day.q;
+    totalProblems += day.p;
+    totalLocore += day.l;
+
+    if (score > bestDayScore) {
+      bestDayScore = score;
+      bestDayDate = day.date;
+    }
+
+    // Longest streak
+    const currentOrdinal = getDateOrdinal(day.date);
+
+    if (
+      previousOrdinal === null ||
+      currentOrdinal - previousOrdinal !== 1
+    ) {
+      currentRun = 1;
+    } else {
+      currentRun++;
+    }
+
+    longestStreak = Math.max(longestStreak, currentRun);
+
+    previousOrdinal = currentOrdinal;
+  }
+
+  // Joriy yil uchun backenddagi haqiqiy streakni ham hisobga olamiz.
+  if (isCurrentYear) {
+    longestStreak = Math.max(longestStreak, currentStreak);
+  }
+
+  const activeDays = days.length;
+
+  const trackedDays = getDaysBetween(
+    range.from,
+    range.to
+  );
+
+  const activityRate = trackedDays
+    ? Number(((activeDays / trackedDays) * 100).toFixed(1))
+    : 0;
+
+  return {
+    totalScore,
+
+    totalQuestions,
+    totalProblems,
+    totalLocore,
+
+    totalActivities:
+      totalQuestions + totalProblems + totalLocore,
+
+    bestDayScore,
+    bestDayDate,
+
+    activeDays,
+    trackedDays,
+    activityRate,
+
+    currentStreak,
+    longestStreak,
+  };
+}
+
+// --------------------------------------------------
+// MAIN COMPONENT
+// --------------------------------------------------
+
+export default function Heatmap({
+  telegramId,
+  username,
+  registrationYear,
+}: HeatmapProps) {
   const currentYear = new Date().getFullYear();
+
   const identifier = telegramId ?? username;
+
   const [year, setYear] = useState(currentYear);
 
-  const { data, error, isLoading, isValidating } = useSWR<HeatmapResponse>(
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // --------------------------------------------------
+  // SWR
+  // --------------------------------------------------
+
+  const {
+    data,
+    error,
+    isLoading,
+    isValidating,
+  } = useSWR<HeatmapResponse>(
     identifier
-      ? `/api/user/heatmap/${encodeURIComponent(String(identifier))}?year=${year}`
+      ? `/api/user/heatmap/${encodeURIComponent(
+          String(identifier)
+        )}?year=${year}`
       : null,
     fetcher,
     {
@@ -120,43 +311,112 @@ export default function Heatmap({ telegramId, username, registrationYear }: Heat
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       dedupingInterval: 60_000,
-    },
+    }
   );
 
-  const firstYear = Math.min(currentYear, data?.first_year ?? registrationYear ?? currentYear);
+  // --------------------------------------------------
+  // AVAILABLE YEARS
+  // --------------------------------------------------
+
+  const firstYear = Math.min(
+    currentYear,
+    data?.first_year ?? registrationYear ?? currentYear
+  );
+
   const years = useMemo(
-    () => Array.from({ length: currentYear - firstYear + 1 }, (_, i) => currentYear - i),
-    [currentYear, firstYear],
+    () =>
+      Array.from(
+        { length: currentYear - firstYear + 1 },
+        (_, i) => currentYear - i
+      ),
+    [currentYear, firstYear]
   );
 
-  // Tooltip uchun O(1) qidiruv
+  // --------------------------------------------------
+  // DATE MAP
+  // --------------------------------------------------
+
   const byDate = useMemo(
-    () => new Map((data?.days ?? []).map((d) => [d.date, d])),
-    [data],
+    () =>
+      new Map(
+        (data?.days ?? []).map((day) => [
+          day.date,
+          day,
+        ])
+      ),
+    [data?.days]
   );
 
-  // Kutubxonaga: faqat daraja (0–4). Bo'sh kunlarni kutubxona o'zi 0 bilan to'ldiradi,
-  // lekin range chegaralari (from/to) bo'lishi shart — shunda Noy/Dek chizilmaydi.
-  const heatmapData = useMemo(() => {
-    const from = data?.range.from;
-    const to = data?.range.to;
-    if (!from || !to) return [];
+  // --------------------------------------------------
+  // HEATMAP DATA
+  // --------------------------------------------------
 
-    const th = buildThresholds((data?.days ?? []).map((d) => d.value));
-    const items = (data?.days ?? []).map((d) => ({ date: d.date, value: levelOf(d.value, th) }));
+  const heatmapData = useMemo<HeatmapItem[]>(() => {
+    if (!data?.range?.from || !data?.range?.to) {
+      return [];
+    }
 
-    if (!byDate.has(from)) items.push({ date: from, value: 0 });
-    if (!byDate.has(to)) items.push({ date: to, value: 0 });
+    const items: HeatmapItem[] = data.days.map((day) => {
+      const score = getActivityScore(day);
 
-    return items.sort((a, b) => a.date.localeCompare(b.date));
+      return {
+        date: day.date,
+        value: getActivityLevel(score),
+      };
+    });
+
+    // Boshlanish va tugash sanalarini majburiy qo'shamiz.
+    // Shunda kalendar yilning oxirigacha to'g'ri chiziladi.
+
+    if (!byDate.has(data.range.from)) {
+      items.push({
+        date: data.range.from,
+        value: 0,
+      });
+    }
+
+    if (!byDate.has(data.range.to)) {
+      items.push({
+        date: data.range.to,
+        value: 0,
+      });
+    }
+
+    return items.sort((a, b) =>
+      a.date.localeCompare(b.date)
+    );
   }, [data, byDate]);
 
-  // Grafik ochilganda oxirgi (bugungi) haftaga scroll
-  const scrollRef = useRef<HTMLDivElement>(null);
+  // --------------------------------------------------
+  // STATISTICS
+  // --------------------------------------------------
+
+  const stats = useMemo(() => {
+    if (!data) return null;
+
+    return calculateStats(
+      data.days,
+      data.current_streak,
+      year === currentYear,
+      data.range
+    );
+  }, [data, year, currentYear]);
+
+  // --------------------------------------------------
+  // SCROLL TO LATEST WEEK
+  // --------------------------------------------------
+
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollLeft = el.scrollWidth;
+
+    if (el) {
+      el.scrollLeft = el.scrollWidth;
+    }
   }, [heatmapData]);
+
+  // --------------------------------------------------
+  // VALIDATION
+  // --------------------------------------------------
 
   if (!identifier) {
     return (
@@ -166,134 +426,293 @@ export default function Heatmap({ telegramId, username, registrationYear }: Heat
     );
   }
 
-  const s = data?.summary;
+  // --------------------------------------------------
+  // LOADING / ERROR
+  // --------------------------------------------------
+
+  if (isLoading && !data) {
+    return (
+      <section className="space-y-5 rounded-3xl border p-5 sm:p-6">
+        <div className="h-7 w-48 animate-pulse rounded bg-muted" />
+
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-24 animate-pulse rounded-xl bg-muted"
+            />
+          ))}
+        </div>
+
+        <div className="h-44 animate-pulse rounded-xl bg-muted" />
+      </section>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <div
+        role="alert"
+        className="rounded-xl border border-destructive/30 p-5 text-sm text-destructive"
+      >
+        {error.message}
+      </div>
+    );
+  }
+
+  if (!data || !stats) {
+    return null;
+  }
+
+  // --------------------------------------------------
+  // RENDER
+  // --------------------------------------------------
 
   return (
-    <section className="w-full min-w-0 space-y-5 rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
+    <section className="w-full min-w-0 space-y-5 rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-zinc-900 sm:p-6">
+
+      {/* HEADER */}
+
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Faollik xaritasi</h2>
+          <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Faollik xaritasi
+          </h2>
+
           <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
-            {year} yildagi kundalik faollik va yechilgan masalalar
+            {year} yildagi kundalik faollik
           </p>
         </div>
 
-        <select
-          value={year}
-          onChange={(e) => setYear(Number(e.target.value))}
-          aria-label="Yilni tanlash"
-          className="rounded-xl border border-slate-200/80 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-800 outline-none transition focus:border-amber-500 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-200"
-        >
-          {years.map((y) => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          {isValidating && (
+            <span className="text-xs text-muted-foreground">
+              Yuklanmoqda...
+            </span>
+          )}
+
+          <select
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+            aria-label="Yilni tanlash"
+            className="rounded-xl border border-slate-200/80 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 outline-none transition focus:border-amber-500 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-200"
+          >
+            {years.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
       </header>
 
-      {error && !data ? (
-        <div role="alert" className="rounded-lg border p-4 text-sm text-destructive">
-          {error.message}
-        </div>
-      ) : isLoading || !data || !s ? (
-        <div className="h-44 animate-pulse rounded-lg bg-muted" />
-      ) : (
-        <div className={isValidating ? "opacity-60 transition-opacity" : "transition-opacity"}>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Stat
-              label="Jami XP"
-              value={nf(s.total_xp)}
-              hint={s.best_xp ? `Eng yaxshi kun: ${nf(s.best_xp)} XP` : undefined}
-            />
-            <Stat
-              label="Yechilgan masalalar"
-              value={nf(s.total_solved)}
-              hint={s.total_minutes ? formatMinutes(s.total_minutes) : undefined}
-            />
-            <Stat
-              label="Faol kunlar"
-              value={nf(s.active_days)}
-              hint={`${nf(s.tracked_days)} kunning ${s.rate}%`}
-            />
-            <Stat
-              label={year === currentYear ? "Joriy seriya" : "Eng uzun seriya"}
-              value={`${year === currentYear ? s.current_streak : s.longest_streak} kun`}
-              hint={year === currentYear ? `Eng uzun: ${s.longest_streak} kun` : undefined}
-            />
-          </div>
+      {/* STATS */}
 
-          <div ref={scrollRef} className="mt-5 w-full min-w-0 overflow-x-auto pb-3">
-            <div className="w-max min-w-full">
-              <TooltipProvider delayDuration={0}>
-                <CalendarHeatmap
-                  data={heatmapData}
-                  weekStart={1}
-                  blockSize={13}
-                  blockMargin={3}
-                  blockRadius={3}
-                  fontSize={12}
-                  levels={5}
-                  colors={{ empty: "var(--color-heat-0)", scale: "var(--color-heat-3)" }}
+      <div
+        className={`grid grid-cols-2 gap-3 transition-opacity lg:grid-cols-4 ${
+          isValidating ? "opacity-60" : "opacity-100"
+        }`}
+      >
+        <Stat
+          label="Faollik balli"
+          value={nf(stats.totalScore)}
+          hint={
+            stats.bestDayScore > 0
+              ? `Eng yaxshi kun: ${nf(stats.bestDayScore)} ball`
+              : "Hozircha ball yo'q"
+          }
+        />
+
+        <Stat
+          label="Jami amallar"
+          value={nf(stats.totalActivities)}
+          hint={`Q: ${nf(stats.totalQuestions)} · P: ${nf(stats.totalProblems)} · L: ${nf(stats.totalLocore)}`}
+        />
+
+        <Stat
+          label="Faol kunlar"
+          value={nf(stats.activeDays)}
+          hint={`${nf(stats.activityRate)}% kalendar davridan`}
+        />
+
+        <Stat
+          label={
+            year === currentYear
+              ? "Joriy seriya"
+              : "Eng uzun seriya"
+          }
+          value={`${
+            year === currentYear
+              ? stats.currentStreak
+              : stats.longestStreak
+          } kun`}
+          hint={
+            year === currentYear
+              ? `Eng uzun: ${stats.longestStreak} kun`
+              : "Tanlangan yildagi natija"
+          }
+        />
+      </div>
+
+      {/* HEATMAP */}
+
+      <div
+        ref={scrollRef}
+        className="w-full min-w-0 overflow-x-auto pb-3"
+      >
+        <div className="w-max min-w-full">
+          <TooltipProvider delayDuration={0}>
+            <CalendarHeatmap
+              data={heatmapData}
+              weekStart={1}
+              blockSize={13}
+              blockMargin={3}
+              blockRadius={3}
+              fontSize={12}
+              levels={5}
+              colors={{
+                empty: "var(--color-heat-0)",
+                scale: "var(--color-heat-3)",
+              }}
+              labels={{
+                months: MONTHS_SHORT,
+                weekdays: WEEKDAYS_SHORT,
+                cellLabel: "{{date}}",
+              }}
+            >
+              <CalendarHeatmapBody
+                hideYearLabels
+                labelClassName="text-muted-foreground"
+              >
+                {({ activity, dayIndex, weekIndex }) => {
+                  const info = byDate.get(activity.date);
+
+                  const score = info
+                    ? getActivityScore(info)
+                    : 0;
+
+                  return (
+                    <Tooltip key={activity.date}>
+                      <TooltipTrigger asChild>
+                        <CalendarHeatmapBlock
+                          activity={activity}
+                          dayIndex={dayIndex}
+                          weekIndex={weekIndex}
+                        />
+                      </TooltipTrigger>
+
+                      <TooltipContent
+                        side="top"
+                        sideOffset={6}
+                        className="pointer-events-none space-y-1 text-xs"
+                      >
+                        <p className="font-semibold">
+                          {formatDate(activity.date)}
+                        </p>
+
+                        {info ? (
+                          <>
+                            <div className="my-1 border-t border-border" />
+
+                            <p>
+                              Question:{" "}
+                              <span className="font-semibold">
+                                {nf(info.q)}
+                              </span>
+                            </p>
+
+                            <p>
+                              Problem:{" "}
+                              <span className="font-semibold">
+                                {nf(info.p)}
+                              </span>
+                            </p>
+
+                            <p>
+                              Locore:{" "}
+                              <span className="font-semibold">
+                                {nf(info.l)}
+                              </span>
+                            </p>
+
+                            <div className="my-1 border-t border-border" />
+
+                            <p className="font-semibold">
+                              Faollik balli: {nf(score)}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="opacity-70">
+                            Faollik yo'q
+                          </p>
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                }}
+              </CalendarHeatmapBody>
+
+              {/* FOOTER */}
+
+              <CalendarHeatmapFooter>
+                <CalendarHeatmapStat>
+                  {() =>
+                    `${year} yilda ${nf(stats.activeDays)} faol kun · ${nf(stats.totalScore)} ball`
+                  }
+                </CalendarHeatmapStat>
+
+                <CalendarHeatmapLegend
                   labels={{
-                    months: MONTHS_SHORT,
-                    weekdays: WEEKDAYS_SHORT,
-                    cellLabel: "{{date}}",
+                    less: "Kamroq",
+                    more: "Ko'proq",
                   }}
-                >
-                  <CalendarHeatmapBody hideYearLabels labelClassName="text-muted-foreground">
-                    {({ activity, dayIndex, weekIndex }) => {
-                      const info = byDate.get(activity.date);
-
-                      return (
-                        <Tooltip key={activity.date}>
-                          <TooltipTrigger asChild>
-                            <CalendarHeatmapBlock
-                              activity={activity}
-                              dayIndex={dayIndex}
-                              weekIndex={weekIndex}
-                            />
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="top"
-                            sideOffset={6}
-                            className="pointer-events-none space-y-0.5 text-xs"
-                          >
-                            <p className="font-medium">{formatDate(activity.date)}</p>
-                            {info ? (
-                              <>
-                                <p>{nf(info.solved)} ta masala · {nf(info.xp)} XP</p>
-                                {info.minutes > 0 && <p>{formatMinutes(info.minutes)}</p>}
-                              </>
-                            ) : (
-                              <p className="opacity-70">Faollik yo'q</p>
-                            )}
-                          </TooltipContent>
-                        </Tooltip>
-                      );
-                    }}
-                  </CalendarHeatmapBody>
-
-                  <CalendarHeatmapFooter>
-                    <CalendarHeatmapStat>
-                      {() => `${year} yilda ${nf(s.active_days)} faol kun · ${nf(s.total_xp)} XP`}
-                    </CalendarHeatmapStat>
-                    <CalendarHeatmapLegend labels={{ less: "Kamroq", more: "Ko'proq" }} />
-                  </CalendarHeatmapFooter>
-                </CalendarHeatmap>
-              </TooltipProvider>
-            </div>
-          </div>
+                />
+              </CalendarHeatmapFooter>
+            </CalendarHeatmap>
+          </TooltipProvider>
         </div>
+      </div>
+
+      {/* ERROR WHILE REVALIDATING */}
+
+      {error && data && (
+        <p className="text-xs text-destructive">
+          Ma'lumotlarni yangilashda xatolik: {error.message}
+        </p>
       )}
+
     </section>
   );
 }
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+// --------------------------------------------------
+// STAT CARD
+// --------------------------------------------------
+
+function Stat({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
   return (
-    <div className="min-w-0 rounded-lg bg-muted/30 p-4">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
-      {hint && <p className="mt-0.5 truncate text-xs text-muted-foreground">{hint}</p>}
+    <div className="min-w-0 rounded-xl border border-slate-200/60 bg-slate-50/70 p-3.5 dark:border-white/5 dark:bg-zinc-800/50 sm:p-4">
+      <p className="text-xs font-medium text-muted-foreground sm:text-sm">
+        {label}
+      </p>
+
+      <p className="mt-1.5 truncate text-xl font-bold tabular-nums tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+        {value}
+      </p>
+
+      {hint && (
+        <p className="mt-1 truncate text-[11px] text-muted-foreground sm:text-xs">
+          {hint}
+        </p>
+      )}
     </div>
   );
 }
