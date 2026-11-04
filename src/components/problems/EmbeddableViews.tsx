@@ -967,11 +967,12 @@ export function EmbeddableViews({ slug }: EmbeddableViewsProps) {
                   enabled: true,
                 },
                 hover: {
-                  enabled: true,
-                },
-                inlineSuggest: {
-                  enabled: true,
-                },
+    enabled: "on",
+  },
+
+  inlineSuggest: {
+    enabled: true,
+  },
               }}
             />
 
