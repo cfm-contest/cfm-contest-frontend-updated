@@ -1,7 +1,7 @@
+
 "use client";
 
 import { backendRequest } from "@/lib/api/django/backend";
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 
@@ -97,6 +97,45 @@ const WEEKDAYS_FULL = [
 const nf = new Intl.NumberFormat("en-US").format;
 
 // --------------------------------------------------
+// HEATMAP COLORS
+// --------------------------------------------------
+
+const HEATMAP_EMPTY = "var(--color-heat-0)";
+const HEATMAP_GREEN = "var(--color-heat-3)";
+
+/**
+ * Ballga qarab rang qaytaradi.
+ *
+ * 0       = bo'sh
+ * 1       = 20% yashil
+ * 2-4     = 47% yashil
+ * 5-9     = 73% yashil
+ * 10+     = 100% yashil
+ *
+ * Muhim:
+ * Ranglar foydalanuvchining maksimal natijasiga bog'liq emas.
+ */
+function getActivityColor(score: number): string {
+  if (score >= 10) {
+    return `color-mix(in oklch, ${HEATMAP_GREEN} 100%, transparent)`;
+  }
+
+  if (score >= 5) {
+    return `color-mix(in oklch, ${HEATMAP_GREEN} 73%, transparent)`;
+  }
+
+  if (score >= 2) {
+    return `color-mix(in oklch, ${HEATMAP_GREEN} 47%, transparent)`;
+  }
+
+  if (score >= 1) {
+    return `color-mix(in oklch, ${HEATMAP_GREEN} 20%, transparent)`;
+  }
+
+  return HEATMAP_EMPTY;
+}
+
+// --------------------------------------------------
 // FETCHER
 // --------------------------------------------------
 
@@ -157,24 +196,6 @@ function getDaysBetween(from: string, to: string) {
  */
 function getActivityScore(day: DayInfo) {
   return Math.floor(day.q / 3) + day.p + day.l;
-}
-
-/**
- * Faollik balliga qarab rang darajasi.
- *
- * 0 ball  = 0
- * 1 ball  = 1
- * 2-4     = 2
- * 5-9     = 3
- * 10+     = 4
- */
-function getActivityLevel(score: number): number {
-  if (score >= 10) return 4;
-  if (score >= 5) return 3;
-  if (score >= 2) return 2;
-  if (score >= 1) return 1;
-
-  return 0;
 }
 
 // --------------------------------------------------
@@ -356,18 +377,12 @@ export default function Heatmap({
       return [];
     }
 
-    const items: HeatmapItem[] = data.days.map((day) => {
-      const score = getActivityScore(day);
-
-      return {
-        date: day.date,
-        value: getActivityLevel(score),
-      };
-    });
+    const items: HeatmapItem[] = data.days.map((day) => ({
+      date: day.date,
+      value: getActivityScore(day),
+    }));
 
     // Boshlanish va tugash sanalarini majburiy qo'shamiz.
-    // Shunda kalendar yilning oxirigacha to'g'ri chiziladi.
-
     if (!byDate.has(data.range.from)) {
       items.push({
         date: data.range.from,
@@ -427,7 +442,7 @@ export default function Heatmap({
   }
 
   // --------------------------------------------------
-  // LOADING / ERROR
+  // LOADING
   // --------------------------------------------------
 
   if (isLoading && !data) {
@@ -448,6 +463,10 @@ export default function Heatmap({
       </section>
     );
   }
+
+  // --------------------------------------------------
+  // ERROR
+  // --------------------------------------------------
 
   if (error && !data) {
     return (
@@ -571,8 +590,8 @@ export default function Heatmap({
               fontSize={12}
               levels={5}
               colors={{
-                empty: "var(--color-heat-0)",
-                scale: "var(--color-heat-3)",
+                empty: HEATMAP_EMPTY,
+                scale: HEATMAP_GREEN,
               }}
               labels={{
                 months: MONTHS_SHORT,
@@ -587,6 +606,7 @@ export default function Heatmap({
                 {({ activity, dayIndex, weekIndex }) => {
                   const info = byDate.get(activity.date);
 
+                  // Haqiqiy ball
                   const score = info
                     ? getActivityScore(info)
                     : 0;
@@ -598,6 +618,12 @@ export default function Heatmap({
                           activity={activity}
                           dayIndex={dayIndex}
                           weekIndex={weekIndex}
+                          style={{
+                            // Asosiy tuzatish:
+                            // Rangni avtomatik darajadan emas,
+                            // haqiqiy balldan hisoblaymiz.
+                            fill: getActivityColor(score),
+                          }}
                         />
                       </TooltipTrigger>
 
