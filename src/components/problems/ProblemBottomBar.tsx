@@ -26,6 +26,7 @@ interface ProblemBottomBarProps {
   likesCount: number;
   isLiked: boolean;
   isBookmarked: boolean;
+  fontSize?: number;
   onFontSizeChange?: (delta: number) => void;
   /** Reyting (ixtiyoriy): 3.4 ko'rinishida */
   rating?: number;
@@ -38,6 +39,7 @@ export function ProblemBottomBar({
   likesCount: initialLikesCount,
   isLiked: initialIsLiked,
   isBookmarked: initialIsBookmarked,
+  fontSize = 14,
   onFontSizeChange,
   rating,
   ratingCount,
@@ -288,18 +290,18 @@ export function ProblemBottomBar({
           <div className="flex items-center gap-0.5 rounded-lg border border-neutral-200 bg-neutral-100 px-1.5 py-0.5 dark:border-slate-700/50 dark:bg-slate-800/60">
             <button
               onClick={() => onFontSizeChange && onFontSizeChange(-1)}
-              className="px-1 text-xs font-semibold text-neutral-600 transition hover:text-neutral-900 dark:text-slate-400 dark:hover:text-slate-200"
+              className="px-1.5 py-0.5 text-xs font-semibold text-neutral-600 transition hover:text-neutral-900 active:scale-95 dark:text-slate-400 dark:hover:text-slate-200"
               title="Kichiklashtirish"
               aria-label="Shriftni kichiklashtirish"
             >
               A-
             </button>
-            <span className="px-0.5 text-[11px] font-medium tabular-nums text-neutral-400">
-              14px
+            <span className="px-1 font-mono text-[11px] font-medium tabular-nums text-neutral-500 dark:text-neutral-400">
+              {fontSize}px
             </span>
             <button
               onClick={() => onFontSizeChange && onFontSizeChange(1)}
-              className="px-1 text-xs font-semibold text-neutral-600 transition hover:text-neutral-900 dark:text-slate-400 dark:hover:text-slate-200"
+              className="px-1.5 py-0.5 text-xs font-semibold text-neutral-600 transition hover:text-neutral-900 active:scale-95 dark:text-slate-400 dark:hover:text-slate-200"
               title="Kattalashtirish"
               aria-label="Shriftni kattalashtirish"
             >

@@ -31,13 +31,19 @@ export { LessonApiError };
 async function handle<T>(
   res: Response
 ): Promise<T> {
-
   if (!res.ok) {
+    if ((res.status === 401 || res.status === 403) && typeof window !== "undefined") {
+      const pathname = window.location.pathname;
+      const search = window.location.search;
+      if (!pathname.startsWith("/login")) {
+        const next = encodeURIComponent(pathname + search);
+        window.location.assign(`/login?next=${next}`);
+      }
+    }
 
     const body =
       await res.json()
         .catch(() => ({}));
-
 
     throw new LessonApiError(
       body.detail ?? "So'rovda xatolik yuz berdi",

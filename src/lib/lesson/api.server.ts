@@ -11,20 +11,29 @@ import type {
 
 import type { QuestionBackendResponse } from "@/lib/types/question";
 
-async function request<T>(endpoint: string): Promise<T | null> {
+async function requestWithStatus<T>(endpoint: string): Promise<{ data: T | null; status: number }> {
   const { status, data } = await ApiProxy.get<T>(endpoint, {
     withAuth: true,
   });
 
   if ([401, 403, 404].includes(status)) {
-    return null;
+    return { data: null, status };
   }
 
   if (status >= 400) {
     throw new Error(`Lesson request failed: ${endpoint}`);
   }
 
-  return data;
+  return { data, status };
+}
+
+async function request<T>(endpoint: string): Promise<T | null> {
+  const res = await requestWithStatus<T>(endpoint);
+  return res.data;
+}
+
+export function getLessonSummaryWithStatus(slug: string) {
+  return requestWithStatus<LessonSummary>(`/courses/lesson/${slug}/`);
 }
 
 export function getLessonSummary(slug: string) {

@@ -16,6 +16,8 @@ import {
 } from "@/lib/seo/config";
 import { SSEProvider } from "@/context/SSEContext";
 import { XPListener } from "@/components/system/xp/XPListener";
+import { AccessibilityProvider } from "@/context/AccessibilityContext";
+import { AccessibilityModal } from "@/components/system/AccessibilityModal";
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -148,13 +150,16 @@ export default function RootLayout({
     >
       <body className="flex min-h-screen flex-col bg-white text-black antialiased">
         <Suspense fallback={null}>
-            <AuthProvider>
+          <AuthProvider>
+            <AccessibilityProvider>
               <SSEProvider>
                 <ConditionalNavbar />
-                  <ToastProvider />
-                  <XPListener />
-                  {children}
+                <ToastProvider />
+                <XPListener />
+                <AccessibilityModal />
+                {children}
               </SSEProvider>
+            </AccessibilityProvider>
           </AuthProvider>
         </Suspense>
       </body>

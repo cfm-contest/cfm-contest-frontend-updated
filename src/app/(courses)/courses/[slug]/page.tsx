@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { CourseHero } from "@/components/courses/course-hero";
 import { CourseCurriculum } from "@/components/courses/course-curriculum";
 import { CourseSidebar } from "@/components/courses/course-sidebar";
 import { CourseFaq } from "@/components/courses/course-faq";
 
-import { getCourseDetail } from "@/lib/api/courses.server";
+import { getCourseDetail, getCourseDetailWithStatus } from "@/lib/api/courses.server";
 
 import {
   SITE_NAME,
@@ -106,7 +106,11 @@ export default async function CourseDetailPage({
 }: PageProps) {
   const { slug } = await params;
 
-  const course = await getCourseDetail(slug);
+  const { data: course, status } = await getCourseDetailWithStatus(slug);
+
+  if (status === 401 || status === 403) {
+    redirect(`/login?next=${encodeURIComponent(`/courses/${slug}`)}`);
+  }
 
   if (!course) {
     notFound();

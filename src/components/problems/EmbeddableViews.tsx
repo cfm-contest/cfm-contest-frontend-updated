@@ -9,6 +9,7 @@ import {
   Clock3,
   Code2,
   Copy,
+  FileText,
   HardDrive,
   Loader2,
   Play,
@@ -18,8 +19,6 @@ import {
   XCircle,
   AlertCircle,
   CheckCircle2,
-  CircleDot,
-  Maximize2,
 } from "lucide-react";
 import {
   useCallback,
@@ -429,6 +428,9 @@ export function EmbeddableViews({ slug }: EmbeddableViewsProps) {
   const [descriptionExpanded, setDescriptionExpanded] =
     useState(false);
 
+  const [mobileTab, setMobileTab] =
+    useState<"desc" | "editor">("desc");
+
   const copyTimeout = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
@@ -770,13 +772,47 @@ export function EmbeddableViews({ slug }: EmbeddableViewsProps) {
           MAIN CONTENT
       ====================================================== */}
 
+      {/* Mobile Tab Switcher */}
+      <div className="flex border-b border-slate-200 bg-slate-50 px-3 py-2 lg:hidden">
+        <div className="grid w-full grid-cols-2 gap-1 rounded-lg bg-slate-200/70 p-0.5">
+          <button
+            type="button"
+            onClick={() => setMobileTab("desc")}
+            className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition-all ${
+              mobileTab === "desc"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <FileText className="size-3.5" />
+            <span>Tavsif</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab("editor")}
+            className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition-all ${
+              mobileTab === "editor"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <Code2 className="size-3.5" />
+            <span>Muharrir</span>
+          </button>
+        </div>
+      </div>
+
       <div className="grid min-w-0 grid-cols-1 lg:grid-cols-[0.88fr_1.12fr]">
 
         {/* ====================================================
             PROBLEM DESCRIPTION
         ==================================================== */}
 
-        <div className="min-w-0 border-b border-slate-200 lg:border-b-0 lg:border-r">
+        <div
+          className={`min-w-0 border-b border-slate-200 lg:border-b-0 lg:border-r ${
+            mobileTab === "editor" ? "hidden lg:block" : "block"
+          }`}
+        >
 
           <div className="flex h-12 items-center justify-between border-b border-slate-100 px-5">
 
@@ -801,7 +837,7 @@ export function EmbeddableViews({ slug }: EmbeddableViewsProps) {
             className={`overflow-y-auto px-5 py-5 ${
               descriptionExpanded
                 ? "max-h-none"
-                : "max-h-[420px] lg:max-h-[650px]"
+                : "max-h-[360px] sm:max-h-[420px] lg:max-h-[650px]"
             }`}
           >
             <MarkdownRenderer content={problem.desc} />
@@ -813,7 +849,11 @@ export function EmbeddableViews({ slug }: EmbeddableViewsProps) {
             CODE EDITOR
         ==================================================== */}
 
-        <div className="min-w-0 bg-white">
+        <div
+          className={`min-w-0 bg-white ${
+            mobileTab === "desc" ? "hidden lg:block" : "block"
+          }`}
+        >
 
           {/* EDITOR TOOLBAR */}
 
@@ -896,7 +936,7 @@ export function EmbeddableViews({ slug }: EmbeddableViewsProps) {
 
           {/* EDITOR */}
 
-          <div className="h-[420px] w-full bg-white sm:h-[520px]">
+          <div className="h-[340px] w-full bg-white sm:h-[460px] lg:h-[520px]">
 
             <MonacoEditor
               language={editorLanguage}

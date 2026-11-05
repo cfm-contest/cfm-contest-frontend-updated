@@ -149,17 +149,23 @@ function mapUserProgress(p: RawProgress): CourseUserProgress {
   };
 }
 
-export const getCourseDetail = cache(async (slug: string): Promise<CourseDetail | null> => {
+export const getCourseDetailWithStatus = cache(async (slug: string): Promise<{ data: CourseDetail | null; status: number }> => {
   try {
     const res = await ApiProxy.get<RawCourseDetail>(`/courses/${slug}`, {
       withAuth: true,
       cache: "no-store",
     });
 
-    if (res.status === 404 || res.status >= 400 || !res.data) return null;
+    if (res.status === 401 || res.status === 403) {
+      return { data: null, status: res.status };
+    }
+
+    if (res.status === 404 || res.status >= 400 || !res.data) {
+      return { data: null, status: res.status };
+    }
 
     const raw = res.data;
-    return {
+    const mapped: CourseDetail = {
       id: raw.id,
       title: raw.t,
       slug: raw.s,
@@ -181,10 +187,16 @@ export const getCourseDetail = cache(async (slug: string): Promise<CourseDetail 
       modules: (raw.mods ?? []).map(mapModule),
       user_progress: raw.progress ? mapUserProgress(raw.progress) : undefined,
     };
-  } catch {
 
-    return null;
+    return { data: mapped, status: res.status };
+  } catch {
+    return { data: null, status: 500 };
   }
+});
+
+export const getCourseDetail = cache(async (slug: string): Promise<CourseDetail | null> => {
+  const result = await getCourseDetailWithStatus(slug);
+  return result.data;
 });
 
 export const getTestInfo = cache(async (modulId: number): Promise<TestInfo | null> => {

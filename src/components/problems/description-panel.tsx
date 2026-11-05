@@ -138,6 +138,7 @@ export function DescriptionPanel({ problem }: DescriptionPanelProps) {
         likesCount={unlocked.likes_count ?? 0}
         isLiked={unlocked.is_liked ?? false}
         isBookmarked={unlocked.is_bookmarked ?? false}
+        fontSize={fontSize}
         onFontSizeChange={handleFontSizeChange}
         rating={unlocked.rating}
         ratingCount={unlocked.rating_count}
@@ -312,7 +313,7 @@ function DescriptionContent({
       </div>
 
       {/* Tavsif matni */}
-      <MarkdownRenderer content={problem.desc} />
+      <MarkdownRenderer content={problem.desc} fontSize={fontSize} />
     </div>
   );
 }
@@ -345,7 +346,7 @@ function HintsContent({
             <Lightbulb className="size-4" />
             Maslahat {i + 1}
           </div>
-          <MarkdownRenderer content={h.text} />
+          <MarkdownRenderer content={h.text} fontSize={fontSize} />
         </div>
       ))}
     </div>
@@ -381,7 +382,7 @@ function ChallengesContent({
               {i + 1}
             </span>
             <div className="text-neutral-700 dark:text-neutral-300">
-              <MarkdownRenderer content={c.text} />
+              <MarkdownRenderer content={c.text} fontSize={fontSize} />
             </div>
           </li>
         ))}

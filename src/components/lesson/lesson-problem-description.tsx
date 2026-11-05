@@ -41,6 +41,11 @@ export function LessonProblemDescription({
   problem,
 }: LessonProblemDescriptionProps) {
   const [activeTab, setActiveTab] = useState<Tab>("description");
+  const [fontSize, setFontSize] = useState<number>(14);
+
+  const handleFontSizeChange = (delta: number) => {
+    setFontSize((prev) => Math.min(22, Math.max(12, prev + delta)));
+  };
 
   const hasHints = problem.hints.length > 0;
   const hasChallenges = problem.chall.length > 0;
@@ -79,7 +84,9 @@ export function LessonProblemDescription({
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        {activeTab === "description" && <DescriptionTab problem={problem} />}
+        {activeTab === "description" && (
+          <DescriptionTab problem={problem} fontSize={fontSize} />
+        )}
         {activeTab === "hints" && <HintsTab problem={problem} />}
         {activeTab === "challenges" && <ChallengesTab problem={problem} />}
         {activeTab === "submissions" && (
@@ -87,6 +94,32 @@ export function LessonProblemDescription({
             <SubmissionList slug={problem.slug} />
           </div>
         )}
+      </div>
+
+      {/* Bottom Bar font zoom */}
+      <div className="flex shrink-0 items-center justify-between border-t border-neutral-200 bg-white px-3 py-1.5 text-xs text-neutral-500">
+        <span className="text-[11px] text-neutral-400">Shrift o'lchami</span>
+        <div className="flex items-center gap-0.5 rounded-lg border border-neutral-200 bg-neutral-100 px-1.5 py-0.5">
+          <button
+            onClick={() => handleFontSizeChange(-1)}
+            className="px-1.5 py-0.5 text-xs font-semibold text-neutral-600 transition hover:text-neutral-900 active:scale-95"
+            title="Kichiklashtirish"
+            aria-label="Shriftni kichiklashtirish"
+          >
+            A-
+          </button>
+          <span className="px-1 font-mono text-[11px] font-medium tabular-nums text-neutral-500">
+            {fontSize}px
+          </span>
+          <button
+            onClick={() => handleFontSizeChange(1)}
+            className="px-1.5 py-0.5 text-xs font-semibold text-neutral-600 transition hover:text-neutral-900 active:scale-95"
+            title="Kattalashtirish"
+            aria-label="Shriftni kattalashtirish"
+          >
+            A+
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -131,7 +164,13 @@ function TabButton({
   );
 }
 
-function DescriptionTab({ problem }: { problem: LessonProblemDetail }) {
+function DescriptionTab({
+  problem,
+  fontSize = 14,
+}: {
+  problem: LessonProblemDetail;
+  fontSize?: number;
+}) {
   const [activeExample, setActiveExample] = useState(0);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -145,7 +184,7 @@ function DescriptionTab({ problem }: { problem: LessonProblemDetail }) {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6" style={{ fontSize: `${fontSize}px` }}>
       {/* Header */}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>

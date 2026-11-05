@@ -103,6 +103,9 @@ export function ProblemWorkspace({
   const [panelLayout, setPanelLayout] =
     useState<PanelLayout>("split");
 
+  const [mobileTab, setMobileTab] =
+    useState<"desc" | "editor">("desc");
+
   const [isRunning, setIsRunning] =
     useState(false);
 
@@ -750,18 +753,53 @@ export function ProblemWorkspace({
         </main>
       ) : isMobile ? (
         /* ======================================================
-           MOBILE STANDARD
+           MOBILE STANDARD (Tab switcher between Tavsif and Kod)
         ====================================================== */
 
-        <main
-          className="
-            relative
-            min-h-0
-            flex-1
-            overflow-hidden
-          "
-        >
-          {editorPanel}
+        <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-neutral-50 dark:bg-neutral-900">
+          {/* Mobile Tabs */}
+          <div className="flex shrink-0 items-center border-b border-neutral-200 bg-white px-2 py-1.5 dark:border-neutral-800 dark:bg-neutral-950">
+            <div className="grid w-full grid-cols-2 gap-1 rounded-lg bg-neutral-100 p-0.5 dark:bg-neutral-900">
+              <button
+                type="button"
+                onClick={() => setMobileTab("desc")}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition-all",
+                  mobileTab === "desc"
+                    ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-800 dark:text-neutral-100"
+                    : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
+                )}
+              >
+                <FileText className="size-3.5" />
+                <span>Tavsif</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileTab("editor")}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition-all",
+                  mobileTab === "editor"
+                    ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-800 dark:text-white"
+                    : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
+                )}
+              >
+                <Code2 className="size-3.5" />
+                <span>Kod va Testlar</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="relative min-h-0 flex-1 overflow-hidden">
+            {mobileTab === "desc" ? (
+              <div className="h-full overflow-y-auto bg-white dark:bg-neutral-950">
+                {descPanel}
+              </div>
+            ) : (
+              <div className="h-full overflow-hidden bg-white dark:bg-neutral-950">
+                {editorPanel}
+              </div>
+            )}
+          </div>
         </main>
       ) : (
         /* ======================================================

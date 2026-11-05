@@ -34,9 +34,15 @@ import {
   Headset,
   Mail,
   Send,
+  Moon,
+  Sun,
+  SlidersHorizontal,
+  Globe,
+  FileQuestion,
 } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
+import { useAccessibility } from "@/context/AccessibilityContext";
 import { cn } from "@/lib/utils";
 import {
   useNavbarStreaks,
@@ -108,6 +114,13 @@ function useOutsideClick(
 
 export function Navbar() {
   const { isAuthenticated, user, logout, isLoading } = useAuth();
+  const {
+    setIsOpen: setAccessibilityOpen,
+    language,
+    setLanguage,
+    darkMode,
+    toggleDarkMode,
+  } = useAccessibility();
   const pathname = usePathname();
 
   const streaks = useNavbarStreaks(isAuthenticated && !!user);
@@ -354,6 +367,12 @@ export function Navbar() {
                       />
 
                       <DropdownItem
+                        href="/faq"
+                        icon={<FileQuestion className="size-4" />}
+                        label="Mening hisobotlarim & FAQ"
+                      />
+
+                      <DropdownItem
                         href="/ranks"
                         icon={<Trophy className="size-4" />}
                         label="Daraja & Sovg'alar"
@@ -377,7 +396,72 @@ export function Navbar() {
                         label="Sozlamalar"
                       />
 
-                      <div className="my-1 border-t border-slate-100" />
+                      <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+                      {/* Tungi/Yorug' rejim */}
+                      <button
+                        role="menuitem"
+                        onClick={toggleDarkMode}
+                        className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          {darkMode ? (
+                            <Sun className="size-4 text-amber-500" />
+                          ) : (
+                            <Moon className="size-4 text-slate-500" />
+                          )}
+                          <span>{darkMode ? "Yorug' rejim" : "Tungi rejim"}</span>
+                        </span>
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                          {darkMode ? "Yoniq" : "O'chiq"}
+                        </span>
+                      </button>
+
+                      {/* Maxsus imkoniyatlar */}
+                      <button
+                        role="menuitem"
+                        onClick={() => {
+                          setMenu(null);
+                          setAccessibilityOpen(true);
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                      >
+                        <SlidersHorizontal className="size-4 text-slate-500" />
+                        <span>Maxsus imkoniyatlar</span>
+                      </button>
+
+                      {/* Tilni tanlash / Change language */}
+                      <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                      <div className="px-3 py-2">
+                        <div className="mb-2 flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
+                          <span className="flex items-center gap-1.5">
+                            <Globe className="size-3.5" />
+                            <span>Change language</span>
+                          </span>
+                          <span className="font-mono text-[10px] font-bold text-orange-600 dark:text-orange-400">
+                            {language}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1">
+                          {(["UZ", "RU", "EN", "QQ"] as const).map((lang) => (
+                            <button
+                              key={lang}
+                              type="button"
+                              onClick={() => setLanguage(lang)}
+                              className={cn(
+                                "rounded-md py-1 text-center font-mono text-xs font-bold transition-all",
+                                language === lang
+                                  ? "bg-slate-900 text-white shadow-sm dark:bg-white dark:text-black"
+                                  : "border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                              )}
+                            >
+                              {lang}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
 
                       <DropdownItem
                         href={SUPPORT_URL}
@@ -386,12 +470,12 @@ export function Navbar() {
                         label="Yordam"
                       />
 
-                      <div className="my-1 border-t border-slate-100" />
+                      <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
 
                       <button
                         role="menuitem"
                         onClick={handleLogout}
-                        className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50"
+                        className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/30"
                       >
                         <LogOut className="size-4" />
                         Chiqish
@@ -403,16 +487,36 @@ export function Navbar() {
             </>
           ) : (
             <div className="flex items-center gap-1 sm:gap-2">
+              <button
+                type="button"
+                onClick={() => setAccessibilityOpen(true)}
+                title="Maxsus imkoniyatlar"
+                aria-label="Maxsus imkoniyatlar"
+                className="hidden size-9 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 sm:flex dark:text-slate-400 dark:hover:bg-slate-800"
+              >
+                <SlidersHorizontal className="size-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={toggleDarkMode}
+                title={darkMode ? "Yorug' rejim" : "Tungi rejim"}
+                aria-label="Rejimni almashtirish"
+                className="hidden size-9 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 sm:flex dark:text-slate-400 dark:hover:bg-slate-800"
+              >
+                {darkMode ? <Sun className="size-4 text-amber-500" /> : <Moon className="size-4 text-slate-500" />}
+              </button>
+
               <Link
                 href="/login"
-                className="hidden rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 sm:block"
+                className="hidden rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 sm:block dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 Kirish
               </Link>
 
               <Link
                 href="/login"
-                className="rounded-md bg-slate-900 px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 sm:px-4"
+                className="rounded-md bg-slate-900 px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 sm:px-4 dark:bg-white dark:text-black"
               >
                 Boshlash
               </Link>
@@ -497,8 +601,8 @@ export function Navbar() {
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-3 py-3 text-[15px] font-medium transition-colors",
                       active
-                        ? "bg-slate-100 text-slate-900"
-                        : "text-slate-600 hover:bg-slate-50"
+                        ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white"
+                        : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                     )}
                   >
                     <link.icon className="size-5" strokeWidth={1.5} />
@@ -508,7 +612,64 @@ export function Navbar() {
               })}
             </nav>
 
-            <div className="border-t border-slate-100" />
+            {/* Mobil sozlamalar: Til, Tungi rejim, Maxsus imkoniyatlar */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/50">
+              <div className="mb-2 flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
+                <span className="flex items-center gap-1.5">
+                  <Globe className="size-3.5" />
+                  <span>Tilni tanlash / Change language</span>
+                </span>
+                <span className="font-mono text-[10px] font-bold text-orange-600 dark:text-orange-400">
+                  {language}
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {(["UZ", "RU", "EN", "QQ"] as const).map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => setLanguage(lang)}
+                    className={cn(
+                      "rounded-lg py-2 text-center font-mono text-xs font-bold transition-all",
+                      language === lang
+                        ? "bg-slate-900 text-white shadow-sm dark:bg-white dark:text-black"
+                        : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                    )}
+                  >
+                    {lang}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={toggleDarkMode}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  {darkMode ? (
+                    <Sun className="size-4 text-amber-500" />
+                  ) : (
+                    <Moon className="size-4 text-slate-500" />
+                  )}
+                  <span>{darkMode ? "Yorug' rejim" : "Tungi rejim"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenu(null);
+                    setAccessibilityOpen(true);
+                  }}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  <SlidersHorizontal className="size-4 text-slate-500" />
+                  <span>Maxsus</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-800" />
 
             {isAuthenticated && user ? (
               <div className="flex flex-col gap-1">

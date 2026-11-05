@@ -54,4 +54,10 @@ export const AUTH_API_ENDPOINT =
   resolveBackendEndpoint(
     process.env.NEXT_PUBLIC_AUTH_API_ENDPOINT,
     ...authEndpointCandidates,
-  ) ?? "https://auth.cfmcontest.uz";
+  ) ?? "https://auth.cfmcontest.uz/api/v1";
+
+export const DEFAULT_SSE_SERVER_URL =
+  process.env.NEXT_PUBLIC_SSE_SERVER_URL ||
+  process.env.NEXT_PUBLIC_SSE_SERVE ||
+  "https://api.cfmcontest.uz/api/v1/sse/events";
+

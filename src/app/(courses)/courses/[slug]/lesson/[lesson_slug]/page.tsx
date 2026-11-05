@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 
 import {
@@ -6,6 +6,7 @@ import {
   getLessonProblem,
   getLessonQuiz,
   getLessonSummary,
+  getLessonSummaryWithStatus,
 } from "@/lib/lesson/api.server";
 
 import { resolveInitialSelection } from "@/lib/lesson/types";
@@ -151,8 +152,12 @@ export default async function CourseLessonPage({
   const { slug: courseSlug, lesson_slug } = await params;
   const sp = await searchParams;
 
-  /* 1. Dars summary */
-  const lesson = await getLessonSummary(lesson_slug);
+  /* 1. Dars summary with status check */
+  const { data: lesson, status } = await getLessonSummaryWithStatus(lesson_slug);
+
+  if (status === 401 || status === 403) {
+    redirect(`/login?next=${encodeURIComponent(`/courses/${courseSlug}/lesson/${lesson_slug}`)}`);
+  }
 
   if (!lesson) {
     notFound();

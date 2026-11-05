@@ -31,6 +31,7 @@ interface MarkdownRendererProps {
   content: string | null | undefined;
   className?: string;
   inline?: boolean;
+  fontSize?: number;
 }
 
 /* ============================================================
@@ -564,6 +565,7 @@ export function MarkdownRenderer({
   content,
   className = "",
   inline = false,
+  fontSize,
 }: MarkdownRendererProps) {
   const params = useParams();
   const slug = (params?.slug as string) || "";
@@ -646,10 +648,10 @@ export function MarkdownRenderer({
 
   return (
     <article
+      style={fontSize ? { fontSize: `${fontSize}px` } : undefined}
       className={`
         prose prose-slate max-w-none
-        text-[15px] leading-7 text-slate-700
-        sm:text-[15.5px]
+        ${fontSize ? "" : "text-[15px] sm:text-[15.5px]"} leading-7 text-slate-700
 
         [&_h1]:mb-4
         [&_h1]:mt-8

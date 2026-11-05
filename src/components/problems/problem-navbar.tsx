@@ -29,10 +29,18 @@ import {
   Timer,
   Users,
   X,
+  User as UserIcon,
+  FileQuestion,
+  Moon,
+  Sun,
+  SlidersHorizontal,
+  Globe,
+  LogOut,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { useAccessibility } from "@/context/AccessibilityContext";
 import { ProblemsListSheet } from "./problems-list-sheet";
 
 // ============================================================
@@ -717,6 +725,7 @@ function usePremiumStatus(
 function UserProfilePopover({
   user,
   isPremium,
+  onClose,
 }: {
   user: {
     username?: string | null;
@@ -725,7 +734,17 @@ function UserProfilePopover({
     telegramId?: string | number | null;
   };
   isPremium: boolean | null;
+  onClose?: () => void;
 }) {
+  const {
+    setIsOpen: setAccessibilityOpen,
+    language,
+    setLanguage,
+    darkMode,
+    toggleDarkMode,
+  } = useAccessibility();
+  const { logout } = useAuth();
+
   const displayName =
     user.fullName?.trim() ||
     user.username ||
@@ -741,7 +760,7 @@ function UserProfilePopover({
         right-0
         top-10
         z-50
-        w-[310px]
+        w-[280px]
         overflow-hidden
         rounded-2xl
         border
@@ -758,19 +777,12 @@ function UserProfilePopover({
 
       <div
         className="
-          relative
-          overflow-hidden
           border-b
           border-neutral-100
-          bg-gradient-to-br
-          from-blue-50
-          via-white
-          to-orange-50
-          p-4
+          bg-neutral-50/60
+          p-3.5
           dark:border-neutral-800
-          dark:from-blue-950/40
-          dark:via-neutral-900
-          dark:to-orange-950/20
+          dark:bg-neutral-900
         "
       >
         <div className="flex items-center gap-3">
@@ -778,20 +790,17 @@ function UserProfilePopover({
           <div
             className="
               flex
-              size-12
+              size-10
               shrink-0
               items-center
               justify-center
               rounded-full
               bg-orange-100
-              text-lg
+              text-sm
               font-bold
               text-orange-600
-              ring-4
-              ring-white
               dark:bg-orange-950
               dark:text-orange-400
-              dark:ring-neutral-900
             "
           >
             {user.username
@@ -816,7 +825,6 @@ function UserProfilePopover({
             {username ? (
               <p
                 className="
-                  mt-0.5
                   truncate
                   text-xs
                   text-neutral-400
@@ -842,7 +850,7 @@ function UserProfilePopover({
                 rounded-full
                 bg-emerald-100
                 px-2
-                py-1
+                py-0.5
                 text-[10px]
                 font-bold
                 text-emerald-700
@@ -858,117 +866,107 @@ function UserProfilePopover({
       </div>
 
       {/* ======================================================
-          USER INFO
+          MENU ITEMS (MATCHING SCREENSHOT 5)
       ====================================================== */}
 
-      <div className="p-3">
-        <div className="space-y-1">
-          {/* Full name */}
-          <UserInfoRow
-            label="To'liq ism"
-            value={
-              user.fullName ||
-              "Ko'rsatilmagan"
-            }
-          />
+      <div className="p-1.5 space-y-0.5 text-sm">
+        {/* Profile */}
+        <Link
+          href={`/user/${user.username || ""}`}
+          onClick={onClose}
+          className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-neutral-700 transition hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+        >
+          <UserIcon className="size-4 text-neutral-400" />
+          <span>Profile</span>
+        </Link>
 
-          {/* Username */}
-          <UserInfoRow
-            label="Username"
-            value={
-              user.username
-                ? `@${user.username}`
-                : "Ko'rsatilmagan"
-            }
-          />
+        {/* My reports */}
+        <Link
+          href="/faq"
+          onClick={onClose}
+          className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-neutral-700 transition hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+        >
+          <FileQuestion className="size-4 text-neutral-400" />
+          <span>My reports</span>
+        </Link>
 
-          {/* Phone */}
-          <UserInfoRow
-            label="Telefon"
-            value={
-              user.phone ||
-              "Ko'rsatilmagan"
-            }
-          />
-
-          {/* Telegram ID */}
-          <UserInfoRow
-            label="Telegram ID"
-            value={
-              user.telegramId
-                ? String(user.telegramId)
-                : "Ko'rsatilmagan"
-            }
-            mono
-          />
-        </div>
-      </div>
-
-      {/* ======================================================
-          ACCOUNT STATUS
-      ====================================================== */}
-
-      <div
-        className="
-          border-t
-          border-neutral-100
-          bg-neutral-50
-          px-4
-          py-3
-          dark:border-neutral-800
-          dark:bg-neutral-950
-        "
-      >
-        <div className="flex items-center justify-between">
-          <span
-            className="
-              text-xs
-              font-medium
-              text-neutral-500
-              dark:text-neutral-400
-            "
-          >
-            Hisob holati
+        {/* Switch to dark mode */}
+        <button
+          type="button"
+          onClick={() => toggleDarkMode()}
+          className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-neutral-700 transition hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+        >
+          <span className="flex items-center gap-2.5">
+            {darkMode ? (
+              <Sun className="size-4 text-amber-500" />
+            ) : (
+              <Moon className="size-4 text-neutral-400" />
+            )}
+            <span>{darkMode ? "Switch to light mode" : "Switch to dark mode"}</span>
           </span>
+          <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
+            {darkMode ? "Light" : "Dark"}
+          </span>
+        </button>
 
-          {isPremium === true ? (
-            <span
-              className="
-                inline-flex
-                items-center
-                gap-1
-                rounded-full
-                bg-emerald-100
-                px-2.5
-                py-1
-                text-[11px]
-                font-semibold
-                text-emerald-700
-                dark:bg-emerald-950
-                dark:text-emerald-400
-              "
-            >
-              <CheckCircle2 className="size-3" />
-              Premium faol
+        {/* Accessibility */}
+        <button
+          type="button"
+          onClick={() => {
+            onClose?.();
+            setAccessibilityOpen(true);
+          }}
+          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-neutral-700 transition hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+        >
+          <SlidersHorizontal className="size-4 text-neutral-400" />
+          <span>Accessibility</span>
+        </button>
+
+        {/* Change language */}
+        <div className="border-t border-neutral-100 px-3 py-2 dark:border-neutral-800">
+          <div className="mb-1.5 flex items-center justify-between text-xs font-semibold text-neutral-500 dark:text-neutral-400">
+            <span className="flex items-center gap-1.5">
+              <Globe className="size-3.5" />
+              <span>Change language</span>
             </span>
-          ) : (
-            <span
-              className="
-                rounded-full
-                bg-neutral-200
-                px-2.5
-                py-1
-                text-[11px]
-                font-semibold
-                text-neutral-600
-                dark:bg-neutral-800
-                dark:text-neutral-400
-              "
-            >
-              Free
+            <span className="font-mono text-[10px] font-bold text-orange-600 dark:text-orange-400">
+              {language}
             </span>
-          )}
+          </div>
+          <div className="grid grid-cols-4 gap-1">
+            {(["UZ", "RU", "EN", "QQ"] as const).map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setLanguage(lang)}
+                className={cn(
+                  "rounded-md py-1 text-center font-mono text-xs font-bold transition-all",
+                  language === lang
+                    ? "bg-neutral-900 text-white shadow-sm dark:bg-white dark:text-neutral-900"
+                    : "border border-neutral-200 bg-neutral-50 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+                )}
+              >
+                {lang}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* Divider */}
+        <div className="my-1 border-t border-neutral-100 dark:border-neutral-800" />
+
+        {/* Log out */}
+        <button
+          type="button"
+          onClick={() => {
+            onClose?.();
+            logout();
+          }}
+          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 dark:hover:bg-red-950/30"
+        >
+          <LogOut className="size-4" />
+          <span>Log out</span>
+        </button>
       </div>
     </div>
   );
@@ -1050,6 +1048,14 @@ export function ProblemNavbar({
     user,
     isAuthenticated,
   } = useAuth();
+
+  const {
+    setIsOpen: setAccessibilityOpen,
+    language,
+    setLanguage,
+    darkMode,
+    toggleDarkMode,
+  } = useAccessibility();
 
   const [problemsListOpen, setProblemsListOpen] =
     useState(false);
@@ -1858,30 +1864,53 @@ export function ProblemNavbar({
               <UserProfilePopover
                 user={user}
                 isPremium={isPremium}
+                onClose={() => setUserMenuOpen(false)}
               />
             )}
           </div>
         ) : (
-          <Link
-            href="/login"
-            className="
-              flex
-              h-8
-              items-center
-              rounded-md
-              px-2
-              text-sm
-              font-medium
-              text-neutral-500
-              transition-colors
-              hover:bg-neutral-100
-              hover:text-neutral-900
-              dark:hover:bg-neutral-800
-              dark:hover:text-neutral-100
-            "
-          >
-            Kirish
-          </Link>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setAccessibilityOpen(true)}
+              title="Maxsus imkoniyatlar"
+              aria-label="Maxsus imkoniyatlar"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            >
+              <SlidersHorizontal className="size-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleDarkMode}
+              title={darkMode ? "Yorug' rejim" : "Tungi rejim"}
+              aria-label="Rejimni almashtirish"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            >
+              {darkMode ? <Sun className="size-4 text-amber-500" /> : <Moon className="size-4 text-neutral-500" />}
+            </button>
+
+            <Link
+              href="/login"
+              className="
+                flex
+                h-8
+                items-center
+                rounded-md
+                px-2
+                text-sm
+                font-medium
+                text-neutral-500
+                transition-colors
+                hover:bg-neutral-100
+                hover:text-neutral-900
+                dark:hover:bg-neutral-800
+                dark:hover:text-neutral-100
+              "
+            >
+              Kirish
+            </Link>
+          </div>
         )}
 
         {/* ====================================================
@@ -2201,6 +2230,89 @@ export function ProblemNavbar({
                 {streakCount} kun
               </span>
             </div>
+
+            {/* TIL VA MAXSUS IMKONIYATLAR (MOBIL) */}
+            <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50/70 p-3 dark:border-neutral-800 dark:bg-neutral-900/50">
+              <div className="mb-2 flex items-center justify-between text-xs font-semibold text-neutral-500 dark:text-neutral-400">
+                <span className="flex items-center gap-1.5">
+                  <Globe className="size-3.5" />
+                  <span>Change language</span>
+                </span>
+                <span className="font-mono text-[10px] font-bold text-orange-600 dark:text-orange-400">
+                  {language}
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {(["UZ", "RU", "EN", "QQ"] as const).map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => setLanguage(lang)}
+                    className={cn(
+                      "rounded-lg py-2 text-center font-mono text-xs font-bold transition-all",
+                      language === lang
+                        ? "bg-neutral-900 text-white shadow-sm dark:bg-white dark:text-black"
+                        : "border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+                    )}
+                  >
+                    {lang}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={toggleDarkMode}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 shadow-sm transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                >
+                  {darkMode ? (
+                    <Sun className="size-4 text-amber-500" />
+                  ) : (
+                    <Moon className="size-4 text-neutral-500" />
+                  )}
+                  <span>{darkMode ? "Yorug' rejim" : "Tungi rejim"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setAccessibilityOpen(true);
+                  }}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 shadow-sm transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                >
+                  <SlidersHorizontal className="size-4 text-neutral-500" />
+                  <span>Maxsus</span>
+                </button>
+              </div>
+            </div>
+
+            {/* PROFIL & CHIQISH (MOBIL) */}
+            {isAuthenticated && user && (
+              <div className="mt-3 space-y-1">
+                <Link
+                  href={`/user/${user.username || ""}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-200"
+                >
+                  <UserIcon className="size-4 text-neutral-500" />
+                  <span>Profilim</span>
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    logout();
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg border border-red-200/60 bg-red-50/50 px-3 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-900/30 dark:bg-red-950/20 dark:text-red-400"
+                >
+                  <LogOut className="size-4" />
+                  <span>Chiqish</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
