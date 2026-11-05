@@ -23,6 +23,7 @@
     "fireworks-js": "^2.10.8",
     "framer-motion": "^12.42.2",
     "hls.js": "^1.6.16",
+    "jose": "^6.2.15",
     "katex": "^0.18.1",
     "lucide-react": "^1.27.0",
     "monaco-editor": "^0.57.0",

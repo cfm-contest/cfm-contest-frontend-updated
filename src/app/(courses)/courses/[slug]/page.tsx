@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import { CourseHero } from "@/components/courses/course-hero";
 import { CourseCurriculum } from "@/components/courses/course-curriculum";
 import { CourseSidebar } from "@/components/courses/course-sidebar";
 import { CourseFaq } from "@/components/courses/course-faq";
+import { Forbidden } from "@/components/forbidden";
+import { redirectToLogin } from "@/lib/auth/redirects";
 
 import { getCourseDetail, getCourseDetailWithStatus } from "@/lib/api/courses.server";
 
@@ -17,18 +19,13 @@ import {
   cleanDescription,
 } from "@/lib/seo/config";
 
-import {
-  courseJsonLd,
-  breadcrumbJsonLd,
-} from "@/lib/seo/jsonld";
+import { courseJsonLd, breadcrumbJsonLd } from "@/lib/seo/jsonld";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-export async function generateMetadata({
-  params,
-}: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
 
   const course = await getCourseDetail(slug);
@@ -36,10 +33,7 @@ export async function generateMetadata({
   if (!course) {
     return {
       title: "Kurs topilmadi",
-      robots: {
-        index: false,
-        follow: false,
-      },
+      robots: { index: false, follow: false },
     };
   }
 
@@ -55,13 +49,8 @@ export async function generateMetadata({
 
   return {
     title: course.title,
-
     description,
-
-    alternates: {
-      canonical: `/courses/${course.slug}`,
-    },
-
+    alternates: { canonical: `/courses/${course.slug}` },
     robots: {
       index: true,
       follow: true,
@@ -73,7 +62,6 @@ export async function generateMetadata({
         "max-video-preview": -1,
       },
     },
-
     openGraph: {
       title: `${course.title} | ${SITE_NAME}`,
       description,
@@ -90,7 +78,6 @@ export async function generateMetadata({
         },
       ],
     },
-
     twitter: {
       card: "summary_large_image",
       title: `${course.title} | ${SITE_NAME}`,
@@ -101,15 +88,19 @@ export async function generateMetadata({
   };
 }
 
-export default async function CourseDetailPage({
-  params,
-}: PageProps) {
+export default async function CourseDetailPage({ params }: PageProps) {
   const { slug } = await params;
 
   const { data: course, status } = await getCourseDetailWithStatus(slug);
 
-  if (status === 401 || status === 403) {
-    redirect(`/login?next=${encodeURIComponent(`/courses/${slug}`)}`);
+  // 401 — sessiya yaroqsiz: login'ga (proxy cookie'ni tozalaydi)
+  if (status === 401) {
+    redirectToLogin(`/courses/${slug}`);
+  }
+
+  // 403 — tizimda, lekin ruxsat yo'q: login'ga yubormaymiz
+  if (status === 403) {
+    return <Forbidden backHref="/courses" backLabel="Kurslarga qaytish" />;
   }
 
   if (!course) {
@@ -119,42 +110,28 @@ export default async function CourseDetailPage({
   const isPaid = Boolean(course.user_progress?.is_paid);
   const isLoggedIn = Boolean(course.user_progress);
 
-  const firstLessonSlug =
-    course.modules?.[0]?.lessons?.[0]?.slug;
+  const firstLessonSlug = course.modules?.[0]?.lessons?.[0]?.slug;
 
   const courseSchema = courseJsonLd(course);
 
- const crumbsSchema = breadcrumbJsonLd([
-  {
-    name: "Bosh sahifa",
-    url: "/",
-  },
-  {
-    name: "Kurslar",
-    url: "/courses",
-  },
-  {
-    name: course.title,
-    url: `/courses/${course.slug}`,
-  },
-]);
+  const crumbsSchema = breadcrumbJsonLd([
+    { name: "Bosh sahifa", url: "/" },
+    { name: "Kurslar", url: "/courses" },
+    { name: course.title, url: `/courses/${course.slug}` },
+  ]);
 
   return (
     <main className="min-h-screen">
       {/* SEO: Course structured data */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(courseSchema),
-        }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(courseSchema) }}
       />
 
       {/* SEO: Breadcrumb structured data */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(crumbsSchema),
-        }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbsSchema) }}
       />
 
       {/* Hero */}
@@ -172,7 +149,6 @@ export default async function CourseDetailPage({
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_360px]">
           {/* Main Content */}
           <div className="flex flex-col gap-12">
-            {/* Curriculum */}
             <section id="curriculum">
               <div className="mb-6">
                 <h2 className="font-display text-2xl font-bold tracking-tight">
@@ -189,7 +165,6 @@ export default async function CourseDetailPage({
               />
             </section>
 
-            {/* FAQ */}
             <CourseFaq />
           </div>
 

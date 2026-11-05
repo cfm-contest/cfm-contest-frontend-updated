@@ -15,14 +15,17 @@ import { useAuth } from "@/context/AuthContext";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { AUTH_API_ENDPOINT } from "@/config/defaults";
+import { safeNext } from "@/lib/auth/safe-next";
 
 const OTP_LENGTH = 6;
 const BOT_USERNAME = "cfm_login_bot";
 
 export default function LoginPage() {
-  const { login, isAuthenticated, isLoading } = useAuth();
+  const { login, isAuthenticated, isLoading, clearLocalAuth } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  const expired = searchParams.get("reason") === "expired";
 
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [loading, setLoading] = useState(false);
@@ -34,18 +37,17 @@ export default function LoginPage() {
   const otp = digits.join("");
   const isComplete = otp.length === OTP_LENGTH && digits.every((d) => d !== "");
 
-  // Agar allaqachon login qilgan bo'lsa, qayta yo'naltirish
+  // Server "sessiya yaroqsiz" degan bo'lsa — localStorage'ni tozalaymiz (loop'ni sindiradi)
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      const next = searchParams.get("next");
-      const invalidNext = ["/login", "/logout"];
-      const redirectTo =
-        next && next.startsWith("/") && !invalidNext.includes(next)
-          ? next
-          : "/";
-      router.replace(redirectTo);
+    if (expired) clearLocalAuth();
+  }, [expired, clearLocalAuth]);
+
+  // Haqiqatan login qilgan bo'lsa — qayta yo'naltirish
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && !expired) {
+      router.replace(safeNext(searchParams.get("next"), "/"));
     }
-  }, [isLoading, isAuthenticated, searchParams, router]);
+  }, [isLoading, isAuthenticated, expired, searchParams, router]);
 
   const setDigitAt = useCallback((index: number, value: string) => {
     setDigits((prev) => {
@@ -134,19 +136,20 @@ export default function LoginPage() {
   );
 
   const handleSubmit = useCallback(
-  async (e: FormEvent) => {
-    e.preventDefault();
+    async (e: FormEvent) => {
+      e.preventDefault();
 
-    if (!isComplete || loading) return;
+      if (!isComplete || loading) return;
 
-    setLoading(true);
-    setError("");
+      setLoading(true);
+      setError("");
 
-    try {
-      const authEndpoint = process.env.NEXT_PUBLIC_AUTH_API_ENDPOINT || AUTH_API_ENDPOINT || "https://auth.cfmcontest.uz";
-      const res = await fetch(
-        `${authEndpoint}/login`,
-        {
+      try {
+        const authEndpoint =
+          process.env.NEXT_PUBLIC_AUTH_API_ENDPOINT ||
+          AUTH_API_ENDPOINT ||
+          "https://auth.cfmcontest.uz";
+        const res = await fetch(`${authEndpoint}/login`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -154,38 +157,35 @@ export default function LoginPage() {
           },
           credentials: "include",
           body: JSON.stringify({ otp }),
+        });
+
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok || !data) {
+          triggerError(
+            data?.detail ?? data?.error ?? "Kod noto'g'ri yoki muddati o'tgan"
+          );
+          return;
         }
-      );
 
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok || !data) {
-        triggerError(
-          data?.detail ??
-          data?.error ??
-          "Kod noto'g'ri yoki muddati o'tgan"
-        );
-        return;
+        login({
+          id: data.u.id,
+          telegramId: data.u.id,
+          username: data.u.u || String(data.u.id),
+          phone: data.u.p ?? null,
+          fullName: data.u.f ?? null,
+          lastLogin: data.u.l ?? null,
+        });
+      } catch {
+        triggerError("Serverga ulanib bo'lmadi. Qayta urinib ko'ring.");
+      } finally {
+        setLoading(false);
       }
+    },
+    [isComplete, loading, otp, login, triggerError]
+  );
 
-      login({
-        id: data.u.id,
-        telegramId: data.u.id,
-        username: data.u.u || String(data.u.id),
-        phone: data.u.p ?? null,
-        fullName: data.u.f ?? null,
-        lastLogin: data.u.l ?? null,
-      });
-    } catch {
-      triggerError("Serverga ulanib bo'lmadi. Qayta urinib ko'ring.");
-    } finally {
-      setLoading(false);
-    }
-  },
-  [isComplete, loading, otp, login, triggerError]
-);
-
-  if (isLoading || isAuthenticated) {
+  if (isLoading || (isAuthenticated && !expired)) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-slate-50 dark:bg-black">
         <Loader2 className="h-6 w-6 animate-spin text-slate-400 dark:text-zinc-500" />
@@ -198,21 +198,30 @@ export default function LoginPage() {
       <div className="flex w-full max-w-sm flex-col items-center rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xl shadow-slate-200/40 dark:border-white/10 dark:bg-zinc-950 dark:shadow-none sm:p-9">
         {/* Logo */}
         <div className="mb-3 sm:mb-4">
-           <div className="relative size-14 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50 dark:border-white/10 dark:bg-zinc-900 sm:size-16">
-              <Image
-                src="/cfm_logo.webp"
-                alt="CfM Contest"
-                fill
-                sizes="64px"
-                className="object-cover"
-                priority
-              />
-            </div>
+          <div className="relative size-14 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50 dark:border-white/10 dark:bg-zinc-900 sm:size-16">
+            <Image
+              src="/cfm_logo.webp"
+              alt="CfM Contest"
+              fill
+              sizes="64px"
+              className="object-cover"
+              priority
+            />
+          </div>
         </div>
 
         <h1 className="mb-2 text-2xl font-black tracking-tight text-slate-900 dark:text-white sm:text-3xl">
           Kodni kiriting
         </h1>
+
+        {expired && (
+          <p
+            role="status"
+            className="mb-3 w-full rounded-xl bg-amber-50 px-3 py-2 text-center text-xs font-medium text-amber-700 dark:bg-amber-400/10 dark:text-amber-300"
+          >
+            Sessiyangiz tugagan. Iltimos, qaytadan kiring.
+          </p>
+        )}
 
         <p className="mb-6 max-w-xs text-center text-sm leading-relaxed text-slate-500 dark:text-zinc-400 sm:mb-7">
           <a
@@ -221,8 +230,7 @@ export default function LoginPage() {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 font-semibold text-slate-900 underline decoration-slate-300 underline-offset-4 transition hover:text-amber-600 hover:decoration-amber-500 dark:text-white dark:decoration-zinc-700 dark:hover:text-amber-400"
           >
-            <Send className="h-3.5 w-3.5" strokeWidth={2.5} />
-            @{BOT_USERNAME}
+            <Send className="h-3.5 w-3.5" strokeWidth={2.5} />@{BOT_USERNAME}
           </a>{" "}
           telegram botiga kiring va 1 daqiqalik bir martalik kodingizni oling.
         </p>
