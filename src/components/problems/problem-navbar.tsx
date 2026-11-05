@@ -682,6 +682,8 @@ export function LayoutSection({
 function usePremiumStatus(
   isAuthenticated: boolean
 ) {
+  const { clearLocalAuth } = useAuth();
+
   const [isPremium, setIsPremium] =
     useState<boolean | null>(null);
 
@@ -696,7 +698,15 @@ function usePremiumStatus(
     backendRequest("/api/subscriptions/me", {
       credentials: "include",
     })
-      .then((res) => res.json())
+      .then((res) => {
+        // Sessiya yaroqsiz: eskirgan localStorage holatini tozalaymiz
+        if (res.status === 401) {
+          if (!cancelled) clearLocalAuth();
+          throw new Error("unauthorized");
+        }
+
+        return res.json();
+      })
       .then((data) => {
         if (!cancelled) {
           setIsPremium(
@@ -713,7 +723,7 @@ function usePremiumStatus(
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, clearLocalAuth]);
 
   return isPremium;
 }
@@ -1047,6 +1057,7 @@ export function ProblemNavbar({
   const {
     user,
     isAuthenticated,
+    logout,
   } = useAuth();
 
   const {
