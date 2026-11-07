@@ -25,7 +25,8 @@ export function QuestionLoader({
   const [questionData, setQuestionData] =
     useState<QuestionBackendResponse | null>(null);
 
-  const endpoint = `/api/courses/questions/${questionId}`;
+  const endpoint = `/courses/questions/${questionId}`;
+  const answerEndpoint = `/courses/questions/${questionId}/answer/`;
 
   useEffect(() => {
     let isMounted = true;
@@ -76,28 +77,20 @@ export function QuestionLoader({
   }, [endpoint]);
 
   const handleAnswerSubmit = async (
-    payload: QuestionAnswerPayload
-  ): Promise<QuestionSubmitResponse> => {
-    const res = await backendRequest(endpoint, {
-      method: "POST",
-      credentials: "same-origin",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+  payload: QuestionAnswerPayload
+): Promise<QuestionSubmitResponse> => {
+  const res = await backendRequest(answerEndpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(
-        data?.detail ||
-          "Javobni yuborishda xatolik yuz berdi."
-      );
-    }
-
-    return data;
-  };
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.detail || "Javobni yuborishda xatolik yuz berdi.");
+  }
+  return data;
+};
 
   if (loading) {
     return (
